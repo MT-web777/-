@@ -1,44 +1,57 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>POTRABASH - Original Art Edition</title><style>
-/* 修正：背景を画面に固定し、スクロールしてもズレないように設定 */
-body{
-    background-color:#0b6623;
+/* --- 全体・背景設定 --- */
+body {
+    background-color: #0b6623;
     background-image: url('hosi.png');
-    background-attachment: fixed; /* 背景を固定 */
-    background-position: center;
+    background-attachment: fixed; /* 背景を画面に固定 */
+    background-position: center center;
+    background-repeat: no-repeat;
     background-size: cover; 
-    color:white; 
-    font-family:sans-serif; 
-    margin:0; padding:0; 
+    color: white; 
+    font-family: sans-serif; 
+    margin: 0; padding: 0; 
     overflow-x: auto; 
     overflow-y: auto;
     min-width: 1024px; /* ゲーム盤面の最低幅 */
+    min-height: 800px;
     -webkit-overflow-scrolling: touch;
 }
 
-/* タイトル画面 */
-#titleScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); }
+/* タイトル画面：画面中央に固定 */
+#titleScreen { 
+    position: fixed; top: 0; left: 0; 
+    width: 100vw; height: 100vh; 
+    display: flex; flex-direction: column; align-items: center; justify-content: center; 
+    z-index: 2000; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); 
+}
 .title-logo { width: 600px; max-width: 90%; height: auto; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(0,0,0,0.5)); }
 #titleScreen .menu { background: rgba(0,0,0,0.8); padding: 30px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.2); text-align: center; }
 
-#ui{width:100%; text-align:center; padding:15px 0; background:rgba(0,0,0,0.8); position: sticky; top: 0; z-index: 1000; display: none;}
-#table{position:relative; width:1000px; height:750px; margin: 40px auto; display: none; padding-bottom: 100px;}
+/* ゲーム画面レイアウト */
+#ui { width: 100%; text-align: center; padding: 15px 0; background: rgba(0,0,0,0.8); position: sticky; top: 0; z-index: 1000; display: none; backdrop-filter: blur(5px); }
+#table { position: relative; width: 1000px; height: 750px; margin: 40px auto; display: none; padding-bottom: 100px; }
 
-#center{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);width:160px;height:220px;background:rgba(6,68,32,0.9);border-radius:12px;text-align:center;padding:10px;z-index:5;box-shadow: 0 0 20px rgba(0,0,0,0.8);border: 2px solid #0a5a2a;}
+/* 中央エリア */
+#center { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); width: 160px; height: 220px; background: rgba(6,68,32,0.9); border-radius: 12px; text-align: center; padding: 10px; z-index: 5; box-shadow: 0 0 20px rgba(0,0,0,0.8); border: 2px solid #0a5a2a; }
 
-.player{position:absolute;width:280px;padding:15px;border-radius:15px;z-index:20;background:rgba(0,0,0,0.5); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);}
-.player.human { width: 360px; min-height: 220px; background:rgba(255,255,255,0.15); z-index: 100; border: 2px solid rgba(255,255,255,0.3);}
-.hand,.field{display:flex;justify-content:center;gap:6px;margin:6px 0}
-.card{width:50px;height:75px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;box-shadow: 2px 2px 5px rgba(0,0,0,0.5);background-size: 100% 100%; background-repeat: no-repeat; position: relative; color: white; text-shadow: 1px 1px 2px black;}
+/* プレイヤーエリア */
+.player { position: absolute; width: 280px; padding: 15px; border-radius: 15px; z-index: 20; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); }
+.player.human { width: 360px; min-height: 220px; background: rgba(255,255,255,0.15); z-index: 100; border: 2px solid rgba(255,255,255,0.3); }
 
+/* カードデザイン */
+.hand, .field { display: flex; justify-content: center; gap: 6px; margin: 6px 0; }
+.card { width: 50px; height: 75px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); background-size: 100% 100%; background-repeat: no-repeat; position: relative; color: white; text-shadow: 1px 1px 2px black; }
 .human .hand .card { width: 80px; height: 120px; font-size: 36px; cursor: pointer; transition: transform 0.2s; }
+
 .v-3{background-color:#8b0000;}.v-2{background-color:#c0392b;}.v1{background-color:#ecf0f1; color:black; text-shadow: none;}.v3{background-color:#5dade2;}.v4{background-color:#f4d03f; color:black; text-shadow: none;}.back{background-color:#1c2833; border:1px solid #34495e;}
 .dead{filter: grayscale(100%) brightness(40%); border: 3px solid red !important;}
 .dead::after{content:"×";font-size:50px;position:absolute;color:#ff0000;font-weight:900;top:50%;left:50%;transform:translate(-50%,-50%);text-shadow:none;}
 .selectable{outline:4px solid #fff;cursor:pointer;animation:pulse 0.8s infinite}
 @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
 
+/* 操作系 */
 button { padding: 12px 24px; cursor: pointer; border-radius: 8px; border: none; background: #eee; font-weight: bold; color: #333; touch-action: manipulation; }
 .btn-large { font-size: 24px; padding: 15px 40px; background: #f1c40f; color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
@@ -81,7 +94,6 @@ button { padding: 12px 24px; cursor: pointer; border-radius: 8px; border: none; 
 </div>
 
 <script>
-// --- 音声・基本設定 ---
 let audioCtx;
 function initAudio() { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
@@ -97,7 +109,6 @@ function playSwooshSound() {
     const filter = audioCtx.createBiquadFilter();
     filter.type = 'bandpass';
     filter.frequency.setValueAtTime(3000, audioCtx.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(1500, audioCtx.currentTime + duration);
     const gainNode = audioCtx.createGain();
     gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
     gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
@@ -105,9 +116,8 @@ function playSwooshSound() {
     noise.start();
 }
 
-// --- ボタンイベントの確実な登録 ---
 document.getElementById('startBtn').addEventListener('click', function() {
-    initAudio(); // ユーザー操作の瞬間に初期化
+    initAudio();
     initGame();
 });
 
@@ -125,18 +135,15 @@ function initGame() {
     startGame();
 }
 
-// --- ゲームロジック（安定版） ---
 function aiThink(p) {
-    const trait = p.trait.name;
     const mySum = p.field.reduce((a,v)=>a+v.value, 0);
     const others = players.filter(o => o.id !== p.id);
     const maxOther = Math.max(...others.map(o => o.field.reduce((a,v)=>a+v.value, 0)));
-    const getCount = (player, val) => player.score.filter(s => s.value === val).length % 3;
     if (lap > 1 && mySum > maxOther && mySum > 0) { if (lap === 3 || mySum >= 4) return {action: "pass"}; }
     const choices = p.hand.map((c, idx) => {
-        let score = 0; const proj = mySum + c.value;
-        if (c.value > 0 && getCount(p, c.value) === 1) score += 2500;
-        if (getCount(p, c.value) === 2) { if (c.value > 0) score -= 4000; else score += 2000; }
+        let score = 0; const getCount = v => p.score.filter(s => s.value === v).length % 3;
+        if (c.value > 0 && getCount(c.value) === 1) score += 2500;
+        if (getCount(c.value) === 2) { if (c.value > 0) score -= 4000; else score += 2000; }
         return {idx, score: score + Math.random() * 50};
     }).sort((a,b)=>b.score - a.score);
     return {action: "play", index: choices[0].idx};
@@ -151,9 +158,8 @@ function nextPick() {
     let bestT = targets[0], bestCi = 0, bestScore = -999999;
     targets.forEach(t => {
         t.field.forEach((c, ci) => {
-            let s = 0; const myCount = p.score.filter(sc=>sc.value===c.value).length % 3;
-            if (c.value === 1) s += 15000;
-            if (myCount === 2) s -= 50000;
+            let s = (c.value === 1) ? 15000 : 0;
+            if (p.score.filter(sc=>sc.value===c.value).length % 3 === 2) s -= 50000;
             if (s > bestScore) { bestScore = s; bestT = t; bestCi = ci; }
         });
     });
@@ -169,7 +175,6 @@ function executePick(pickerId, targetId, cardIdx) {
         picker.score.push(c); pickIndex = (pickIndex + 1) % playerCount; render(); setTimeout(nextPick, 400);
     });
 }
-
 function humanPick(targetIdx, cardIdx) { if (phase !== "pick" || pickIndex !== 0) return; executePick(0, targetIdx, cardIdx); }
 
 function startPick(){
