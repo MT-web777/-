@@ -115,13 +115,15 @@ button { padding: 10px 20px; cursor: pointer; border-radius: 8px; border: none; 
             <section class="summary-section" id="sum-acquisition">
                 <h4>2. 獲得パート (Acquisition)</h4>
                 <ul>
-                    <li>中央勝者から順に<b>他人の場</b>から1枚奪う<br><span class="lang-en">Winner steals 1 card from others.</span></li>
+                    <li><b>中央獲得:</b> 合計最大値の人が中央を得る。<br><span class="lang-en">Winner gets the center card.</span></li>
+                    <li><b>場から獲得:</b> 中央勝者の<b>隣の人</b>から順に時計回りで1枚ずつ奪う。<br><span class="lang-en">Starting from the winner's neighbor, each player takes 1 card clockwise.</span></li>
                 </ul>
             </section>
             <section class="summary-section">
                 <h4>3. スコア・特殊ルール</h4>
                 <ul>
-                    <li><b>3枚で消滅:</b> 3枚揃うと捨て札（0点）。<br><span class="lang-en">Sets of 3 are discarded.</span></li>
+                    <li><b>3枚で消滅 (1以外):</b> 1以外のカードは3枚揃うと捨て札（0点）。<br><span class="lang-en">Sets of 3 (except "1") are discarded.</span></li>
+                    <li><b>1は絶対:</b> 1は3枚揃っても消滅せず、常に得点になる。<br><span class="lang-en">"1"s never discard and always count as points.</span></li>
                     <li><b>最終勝敗:</b> 合計点。同点は1の数で判定。<br><span class="lang-en">Highest score wins. Tie: Most "1"s.</span></li>
                 </ul>
             </section>
