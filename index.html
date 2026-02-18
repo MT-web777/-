@@ -1,51 +1,416 @@
-// --- 修正箇所：nextPick関数内のAI思考ロジックのみをアップデート ---
-function nextPick() {
-    if (!players.some(p => p.field.length)) { 
-        startIndex = (pickIndex) % playerCount; 
-        if (deck.length === 0 && players[0].hand.length === 0) return endGame(); 
-        return nextRound(); 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=0.7, minimum-scale=0.3, maximum-scale=2.0, user-scalable=yes">
+<title>POTRABASH - Original Art Edition</title>
+<style>
+/* 背景・レイアウト */
+body{background:#0b6623 url('hosi.png') no-repeat center center; background-size: cover; color:white; font-family:sans-serif; margin:0; padding:0; overflow:auto; min-height: 100vh;}
+.game-container { display: flex; justify-content: space-between; width: 100%; min-width: 1000px; height: 100%; position: relative; }
+.main-play-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
+
+/* パスメッセージ用アニメーション */
+@keyframes fadeUp {
+    0% { opacity: 0; transform: translate(-50%, 0); }
+    20% { opacity: 1; transform: translate(-50%, -15px); }
+    80% { opacity: 1; transform: translate(-50%, -15px); }
+    100% { opacity: 0; transform: translate(-50%, -30px); }
+}
+
+/* サイドパネル */
+.side-panel { width: 280px; padding: 10px; box-sizing: border-box; z-index: 100; }
+.status-box { background: rgba(0, 0, 0, 0.7); border: 2px solid #ffd700; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+#current-part { color: #ffd700; margin: 0 0 5px 0; font-size: 1.2rem; }
+.summary-box { background: rgba(0, 0, 0, 0.85); border-left: 2px solid rgba(255, 215, 0, 0.3); padding: 12px; height: 95vh; font-size: 0.75rem; overflow-y: auto; line-height: 1.5; }
+.summary-box h3 { color: #ffd700; border-bottom: 2px solid; padding-bottom: 5px; margin-top: 0; font-size: 1.1rem; text-align: center; }
+.summary-section { margin-bottom: 12px; padding: 10px; transition: 0.3s; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
+.summary-section h4 { color: #ffd700; margin: 0 0 8px 0; font-size: 0.9rem; border-bottom: 1px solid rgba(255,215,0,0.3); }
+.active-section { background: rgba(255, 215, 0, 0.2); border: 1px solid #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.2); }
+.summary-box ul { padding-left: 18px; margin: 0; }
+.lang-en { color: #aaa; font-style: italic; display: block; font-size: 0.7rem; margin-top: 2px; }
+
+/* ゲームボード要素 */
+#titleScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; background: rgba(0,0,0,0.4); }
+.title-logo { width: 600px; max-width: 90%; height: auto; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(0,0,0,0.5)); }
+#titleScreen .menu { background: rgba(0,0,0,0.7); padding: 30px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.2); text-align: center; backdrop-filter: blur(5px); }
+#ui{width:100%;text-align:center;padding:10px 0;background:rgba(0,0,0,0.6);position:relative;z-index:200; display: none;}
+#table{position:relative;width:1000px;height:700px;margin:auto; display: none;}
+#center{position:absolute;top:50%;left:42%;transform:translate(-50%,-50%);width:160px;height:220px;background:rgba(6,68,32,0.8);border-radius:12px;text-align:center;padding:10px;z-index:5;box-shadow: 0 0 20px rgba(0,0,0,0.8);border: 2px solid #0a5a2a;}
+
+.player{position:absolute;width:280px;padding:10px;border-radius:15px;z-index:20;transition: all 0.3s; background:rgba(0,0,0,0.4); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);}
+.player.human, .player.reveal-all { width: 360px; min-height: 200px; background:rgba(255,255,255,0.15); z-index: 50;}
+.hand, .field { display: flex; justify-content: center; gap: 6px; margin: 6px 0; min-height: 80px; position: relative; }
+.card { width: 50px; height: 75px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); background-size: 100% 100%; position: relative; color: white; text-shadow: 1px 1px 2px black; transition: transform 0.2s; }
+
+.human .hand .card { width: 80px; height: 120px; font-size: 36px; cursor: pointer; margin: 0 2px; }
+.human .hand .card:hover { transform: translateY(-10px) scale(1.05) !important; z-index: 100; }
+.player:not(.human) .hand .card { position: absolute; margin-left: -20px; }
+
+.score-container { display: flex; gap: 3px; justify-content: flex-start; flex-wrap: wrap; margin-top: 10px; min-height: 60px; position: relative; }
+.score-card-messy { position: absolute; }
+
+.v-3{background-color:#8b0000;}.v-2{background-color:#c0392b;}.v1{background-color:#ecf0f1; color:black; text-shadow: none;}.v3{background-color:#5dade2;}.v4{background-color:#f4d03f; color:black; text-shadow: none;}.back{background-color:#1c2833; border:1px solid #34495e;}
+.dead{filter: grayscale(100%) brightness(40%); border: 3px solid red !important;}.dead::after{content:"×";font-size:50px;position:absolute;color:#ff0000;font-weight:900;top:50%;left:50%;transform:translate(-50%,-50%);text-shadow:none;z-index:100;}
+.selectable{outline:4px solid #fff;cursor:pointer;animation:pulse 0.8s infinite}
+@keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
+
+button { padding: 10px 20px; cursor: pointer; border-radius: 8px; border: none; background: #eee; font-weight: bold; color: #333; transition: 0.2s; touch-action: manipulation;}
+.btn-large { font-size: 24px; padding: 15px 40px; background: #f1c40f; color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+.flying-card { position: fixed; z-index: 9999; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<audio id="bgm" loop><source src="https://www.dropbox.com/scl/fi/49sn3at2wqynqjrvbazhr/bgm.mp3?rlkey=vq7qobgw31mljqu9xbs6pdkul&st=x7cbq7kf&raw=1" type="audio/mpeg"></audio>
+
+<div id="titleScreen">
+    <img src="rogo.png" alt="POTRABASH" class="title-logo">
+    <div class="menu">
+        <p style="font-size: 18px; margin-bottom: 20px;">Nightmare Mode (Original Art)</p>
+        <div style="margin-bottom: 25px;">
+            <button onclick="window.open('rule.pdf', '_blank')" style="background:#444; color:white; border:1px solid #777; padding:8px 15px; margin-bottom:10px; width:200px;">📖 ルールを読む (日本語)</button><br>
+            <button onclick="window.open('rule_en.pdf', '_blank')" style="background:#224; color:white; border:1px solid #55a; padding:8px 15px; width:200px;">🌍 English Rules (PDF)</button>
+        </div>
+        <select id="playerCount" style="font-size: 20px; padding: 5px; margin-bottom: 30px;">
+            <option value="3">3人</option>
+            <option value="4" selected>4人</option>
+            <option value="5">5人</option>
+        </select><br>
+        <button class="btn-large" onclick="initGame()">Game Start</button>
+    </div>
+</div>
+
+<div class="game-container">
+    <aside class="side-panel left-panel" id="sideStatus" style="display: none;">
+        <div class="status-box">
+            <h2 id="current-part">贈与パート</h2>
+            <p id="current-phase">準備中</p>
+            <p id="instruction-text" style="font-size: 0.8rem; color: #ccc;">山札からカードがめくられます。</p>
+        </div>
+    </aside>
+
+    <main class="main-play-area">
+        <div id="ui"><span id="infoLabel" style="font-weight: bold; margin-right: 20px;"></span><button onclick="backToTitle()">タイトルへ戻る</button></div>
+        <div id="table">
+            <div id="center">
+                <div style="font-size:14px;margin-bottom:8px">中央獲得カード</div>
+                <div id="centerCard" class="card" style="margin:0 auto 15px auto; width:80px; height:120px;"></div>
+                <button id="passBtn" onclick="pass()">パスして終了</button>
+            </div>
+        </div>
+    </main>
+
+    <aside class="side-panel right-panel" id="right-panel" style="display: none;">
+        <div class="summary-box">
+            <h3>Summary / サマリー</h3>
+            <section class="summary-section active-section" id="sum-gift">
+                <h4>1. 贈与パート (Gift)</h4>
+                <ul>
+                    <li><b>1周目:</b> 全員必ず1枚出す<br><span class="lang-en">Everyone must play 1 card.</span></li>
+                    <li><b>2・3周目:</b> 出すかパスか選択<br><span class="lang-en">Play or Pass (Optional).</span></li>
+                    <li><b>勝利条件:</b> 合計最大値が中央獲得。同点なら後攻優先。<br><span class="lang-en">Highest sum wins. Last player wins ties.</span></li>
+                </ul>
+            </section>
+            <section class="summary-section" id="sum-acquisition">
+                <h4>2. 獲得パート (Acquisition)</h4>
+                <ul>
+                    <li>中央勝者から順に<b>他人の場</b>から1枚奪う<br><span class="lang-en">Winner steals 1 card from others.</span></li>
+                </ul>
+            </section>
+            <section class="summary-section">
+                <h4>3. スコア・特殊ルール</h4>
+                <ul>
+                    <li><b>3枚で消滅:</b> 3枚揃うと捨て札（0点）。<br><span class="lang-en">Sets of 3 are discarded.</span></li>
+                    <li><b>最終勝敗:</b> 合計点。同点は1の数で判定。<br><span class="lang-en">Highest score wins. Tie: Most "1"s.</span></li>
+                </ul>
+            </section>
+        </div>
+    </aside>
+</div>
+
+<script>
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// 出札音
+function playSwooshSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const duration = 0.15;
+    const bufferSize = audioCtx.sampleRate * duration;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(3000, audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(1500, audioCtx.currentTime + duration);
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+    noise.connect(filter); filter.connect(gainNode); gainNode.connect(audioCtx.destination);
+    noise.start(); noise.stop(audioCtx.currentTime + duration);
+}
+
+// パス音（空振り音）
+function playPassSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+}
+
+const personalities = [ { name: "強欲" }, { name: "慎重" }, { name: "刺客" }, { name: "大器" } ];
+let players=[], deck=[], playerCount=4, startIndex=0, turnIndex=0, lap=1, centerCard=null, phase="title", pickIndex=0;
+let lastPlayOrder = []; 
+
+function showPassMessage(playerId) {
+    playPassSound(); // パス時に音を鳴らす
+    const pEl = document.querySelector(`.player-id-${playerId}`);
+    if(!pEl) return;
+    const msg = document.createElement("div");
+    msg.innerText = "PASS";
+    msg.style.cssText = `
+        position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+        background: rgba(255,255,255,0.9); color: #333; padding: 5px 15px;
+        border-radius: 20px; font-weight: bold; font-size: 14px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 1000;
+        animation: fadeUp 1s forwards; border: 1px solid #666;
+    `;
+    pEl.appendChild(msg);
+    setTimeout(() => msg.remove(), 1000);
+}
+
+function updateUIPanels(part, phaseName, instruct) {
+    document.getElementById('current-part').innerText = part;
+    document.getElementById('current-phase').innerText = phaseName;
+    document.getElementById('instruction-text').innerText = instruct;
+    const g = document.getElementById('sum-gift'), a = document.getElementById('sum-acquisition');
+    if(part==="贈与パート"){ g.classList.add('active-section'); a.classList.remove('active-section'); }
+    else if(part==="獲得パート"){ g.classList.remove('active-section'); a.classList.add('active-section'); }
+}
+
+function initGame() {
+    playerCount = parseInt(document.getElementById("playerCount").value);
+    document.getElementById("titleScreen").style.display = "none";
+    document.getElementById("ui").style.display = "block";
+    document.getElementById("table").style.display = "block";
+    document.getElementById("sideStatus").style.display = "block";
+    document.getElementById("right-panel").style.display = "block";
+    const bgm = document.getElementById("bgm"); bgm.volume = 0.3; bgm.play().catch(e => {});
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    startGame();
+}
+
+function backToTitle() { location.reload(); }
+
+function aiThink(p) {
+    const trait = p.trait.name;
+    const mySum = p.field.reduce((a,v)=>a+v.value, 0);
+    const others = players.filter(o => o.id !== p.id);
+    const maxOther = Math.max(...others.map(o => o.field.reduce((a,v)=>a+v.value, 0)));
+    const centerIsOne = (centerCard && centerCard.value === 1);
+    const myMinusCount = (centerCard && centerCard.value < 0) ? p.score.filter(s => s.value === centerCard.value).length : 0;
+    const isSpecialTrait = (trait === "慎重" || trait === "大器" || trait === "刺客");
+
+    if (!( (centerIsOne || myMinusCount > 0) && isSpecialTrait )) {
+        if (lap > 1 && mySum > maxOther && mySum > 0) return {action: "pass"};
+        if (lap > 2 && mySum === maxOther && mySum > 0) return {action: "pass"};
     }
+    
+    const choices = p.hand.map((c, idx) => {
+        let score = 0; const proj = mySum + c.value;
+        if (centerIsOne && proj > maxOther) score += 100000;
+        else if (myMinusCount > 0 && proj > maxOther) score += (myMinusCount === 2) ? 80000 : 40000;
+        return {idx, score: score + Math.random() * 50};
+    }).sort((a,b)=>b.score - a.score);
+    return {action: "play", index: choices[0].idx};
+}
+
+function executePick(pickerId, targetId, cardIdx) {
+    const picker = players[pickerId]; const target = players[targetId];
+    if(!target || !target.field[cardIdx]) { nextPick(); return; }
+    const fromEl = document.querySelector(`.player-id-${targetId} .field .card:nth-child(${cardIdx + 1})`);
+    const c = target.field.splice(cardIdx, 1)[0];
+    animateCardSlide(fromEl, `.player-id-${pickerId} .score-anchor`, c.value, (pickerId !== 0), () => { picker.score.push(c); pickIndex = (pickIndex + 1) % playerCount; render(); setTimeout(nextPick, 300); });
+}
+
+// --- AIの獲得ロジック：マイナス相殺を最優先するようにアップデート ---
+function nextPick() {
+    if (!players.some(p => p.field.length)) { startIndex = (pickIndex) % playerCount; if (deck.length === 0 && players[0].hand.length === 0) return endGame(); return nextRound(); }
     const p = players[pickIndex];
     let others = players.filter(o => o.id !== p.id && o.field.length);
     let targets = others.length > 0 ? others : [p];
-
     updateUIPanels("獲得パート", `回収中 (P${p.id})`, (p.id === 0) ? "場から1枚取ってください。" : `P${p.id}が獲得中...`);
-
     if (p.id === 0) { render(true, targets.map(t => t.id)); return; }
 
-    // --- ここからAIの獲得思考（相殺優先） ---
+    // AIの思考
     let bestT = targets[0], bestCi = 0, bestScore = -999999;
     targets.forEach(t => {
         t.field.forEach((c, ci) => {
             let s = 0;
-            // 自分がその数字を何枚持っているか確認
             const myOwned = p.score.filter(sc => sc.value === c.value).length;
+            if (myOwned === 2 && c.value < 0) { s += 1000000; } // マイナス相殺を最優先
+            else if (c.value === 1) { s += 50000; } 
+            else if (myOwned === 2 && c.value > 1) { s -= 50000; } 
+            else if (myOwned === 1 && c.value < 0) { s += 20000; }
+            else { s += c.value * 1000; }
 
-            // 1. 【最優先】マイナス札の3枚目：相殺（消滅）して0点にするためスコアを跳ね上げる
-            if (myOwned === 2 && c.value < 0) {
-                s += 1000000; 
-            }
-            // 2. 1のカード：タイブレークに備えて優先
-            else if (c.value === 1) {
-                s += 50000;
-            }
-            // 3. プラス札の3枚目：消滅してしまうので、基本は避ける
-            else if (myOwned === 2 && c.value > 1) {
-                s -= 50000;
-            }
-            // 4. マイナス札の2枚目：リーチをかける
-            else if (myOwned === 1 && c.value < 0) {
-                s += 20000;
-            }
-            // 5. 通常の加点
-            else {
-                s += c.value * 1000;
-            }
-
-            if (s > bestScore) {
-                bestScore = s; bestT = t; bestCi = ci;
-            }
+            if (s > bestScore) { bestScore = s; bestT = t; bestCi = ci; }
         });
     });
     executePick(p.id, bestT.id, bestCi);
 }
+
+function humanPick(targetIdx, cardIdx) { if (phase !== "pick" || pickIndex !== 0) return; executePick(0, targetIdx, cardIdx); }
+
+function startPick(){
+    phase="pick"; const centerEl = document.getElementById("centerCard");
+    const sums = players.map(p => p.field.reduce((a,c)=>a+c.value,0));
+    const maxSum = Math.max(...sums);
+    let winners = []; sums.forEach((s, idx) => { if(s === maxSum) winners.push(idx); });
+    let winner = winners[0];
+    if (winners.length > 1) { for(let i = lastPlayOrder.length - 1; i >= 0; i--) { if(winners.includes(lastPlayOrder[i])) { winner = lastPlayOrder[i]; break; } } }
+    updateUIPanels("獲得パート", "中央獲得", `P${winner}が中央を獲得！`);
+    animateCardSlide(centerEl, `.player-id-${winner} .score-anchor`, centerCard.value, (winner!==0), () => { players[winner].score.push(centerCard); centerEl.style.visibility = "hidden"; pickIndex = (winner + 1) % playerCount; render(); setTimeout(nextPick, 300); });
+}
+
+function endGame(){
+    phase = "end";
+    updateUIPanels("終了", "最終結果", "お疲れ様でした！");
+    players.forEach(p => {
+        let groups = {}; p.score.forEach(c => { if (!groups[c.value]) groups[c.value] = []; groups[c.value].push(c); });
+        p.total = 0; p.score.forEach(c => c.isDead = false);
+        Object.keys(groups).forEach(val => { let cards = groups[val]; let numDead = Math.floor(cards.length / 3) * 3; for (let i = 0; i < numDead; i++) cards[i].isDead = true; });
+        p.score.forEach(c => { if (!c.isDead) p.total += c.value; });
+    });
+    let maxTotal = Math.max(...players.map(p => p.total));
+    let candidates = players.filter(p => p.total === maxTotal);
+    let maxOnes = Math.max(...candidates.map(p => p.score.filter(c => c.value === 1 && !c.isDead).length));
+    players.forEach(p => { p.isAbsoluteWinner = (p.total === maxTotal && p.score.filter(c => c.value === 1 && !c.isDead).length === maxOnes); });
+    render();
+}
+
+function updateInfo() { document.getElementById("infoLabel").innerText = `山札残り: ${deck.length}枚`; }
+function makeDeck(){let d=[];[-3,-2,1,3,4].forEach(v=>{for(let i=0;i<12;i++)d.push({value:v});});return d.sort(()=>Math.random()-0.5);}
+
+function startGame(){
+    deck=makeDeck(); if(playerCount===3) { let newDeck = []; [-3,-2,1,3,4].forEach(v => { let count=0; deck.forEach(c => { if(c.value === v && count < 10) { newDeck.push(c); count++; } }); }); deck = newDeck.sort(()=>Math.random()-0.5); }
+    players=[]; let shuffledTraits = [...personalities].sort(() => Math.random() - 0.5);
+    for(let i=0;i<playerCount;i++) { let trait = (i === 0) ? null : shuffledTraits[(i - 1) % shuffledTraits.length]; players.push({ id:i, hand:[], field:[], score:[], total:0, trait: trait }); }
+    for(let i=0;i<3;i++) players.forEach(p=>p.hand.push(deck.pop()));
+    nextRound();
+}
+
+function advanceTurn(){ turnIndex++; if(turnIndex>=playerCount){ turnIndex=0; lap++; } render(); nextTurn(); }
+function nextTurn(){ 
+    if(lap>3) return startPick(); 
+    const p=players[getPlayerIdx(turnIndex)]; 
+    updateUIPanels("贈与パート", `フェイズ ${lap}`, (p.id === 0) ? "選択してください。" : `P${p.id}が思考中...`);
+    if(p.id!==0 && phase!=="end" && phase!=="title") setTimeout(()=>aiPlay(p),800); 
+}
+
+function aiPlay(p){ 
+    const d=aiThink(p); 
+    if(d.action==="pass") { 
+        showPassMessage(p.id); 
+        advanceTurn(); 
+    } else { 
+        const c=p.hand.splice(d.index,1)[0]; 
+        p.field.push(c); 
+        lastPlayOrder.push(p.id); 
+        if(deck.length) { p.hand.push(deck.pop()); updateInfo(); } 
+        playSwooshSound(); 
+        advanceTurn(); 
+    } 
+}
+
+function humanPlay(i){ 
+    if(phase!=="play"||getPlayerIdx(turnIndex)!==0)return; 
+    const p=players[0]; const c=p.hand.splice(i,1)[0]; 
+    p.field.push(c); lastPlayOrder.push(0); 
+    if(deck.length){p.hand.push(deck.pop()); updateInfo();} 
+    playSwooshSound(); advanceTurn(); 
+}
+
+function pass(){ 
+    if(lap===1||phase!=="play"||getPlayerIdx(turnIndex)!==0)return; 
+    showPassMessage(0); 
+    advanceTurn(); 
+}
+
+function nextRound(){
+    phase="play"; lap=1; turnIndex=0; lastPlayOrder=[]; players.forEach(p=>p.field=[]);
+    if(deck.length > 0) { centerCard=deck.pop(); updateInfo(); } else return endGame();
+    applyCardDesign(document.getElementById("centerCard"), centerCard.value);
+    document.getElementById("centerCard").style.visibility="visible"; render(); nextTurn();
+}
+
+function applyCardDesign(el, val, isBack=false) {
+    if(!el) return; el.style.backgroundImage = ""; el.innerText = "";
+    if(isBack) { el.className = "card back"; el.style.backgroundImage = `url('card_back.png')`; } 
+    else { el.className = "card " + vClass(val); el.style.backgroundImage = `url('card_${val}.png')`; }
+}
+const vClass=v=>v===-3?"v-3":v===-2?"v-2":v===1?"v1":v===3?"v3":"v4";
+
+function animateCardSlide(fromEl, toSelector, value, hideOnEnd, callback) {
+    if (!fromEl) return callback();
+    playSwooshSound(); const fromRect = fromEl.getBoundingClientRect();
+    const toEl = document.querySelector(toSelector); if (!toEl) return callback();
+    const toRect = toEl.getBoundingClientRect();
+    const clone = document.createElement('div'); applyCardDesign(clone, value, fromEl.classList.contains('back'));
+    clone.classList.add('flying-card'); clone.style.width = fromRect.width + 'px'; clone.style.height = fromRect.height + 'px';
+    document.body.appendChild(clone); fromEl.style.visibility = "hidden";
+    clone.animate([{ left: fromRect.left + 'px', top: fromRect.top + 'px' },{ left: toRect.left + 'px', top: toRect.top + 'px' }], { duration: 350, easing: 'ease-out' }).onfinish = () => { clone.remove(); callback(); };
+}
+
+function getPlayerIdx(tIdx) { return (startIndex + tIdx) % playerCount; }
+
+function render(pick=false,allowedIds=[]){
+    const t=document.getElementById("table"); t.querySelectorAll(".player").forEach(e=>e.remove());
+    const isEnd = (phase === "end");
+    const posConfig = { 3:[{x:600,y:450},{x:20,y:450},{x:20,y:20}], 4:[{x:600,y:450},{x:20,y:450},{x:20,y:20},{x:600,y:20}], 5:[{x:600,y:450},{x:20,y:450},{x:20,y:20},{x:400,y:5},{x:750,y:100}] };
+    const positions=posConfig[players.length];
+
+    players.forEach((p,i)=>{
+        const d=document.createElement("div"); d.className="player player-id-"+p.id+(p.id===0?" human":"") + (isEnd ? " reveal-all" : "");
+        d.style.left=positions[i].x+"px"; d.style.top=positions[i].y+"px";
+        if(!isEnd && phase==="play" && getPlayerIdx(turnIndex)===p.id) d.style.boxShadow="0 0 20px #f1c40f";
+        if(isEnd && p.isAbsoluteWinner) d.style.outline="5px solid #f1c40f";
+        d.innerHTML=`<div style="font-weight:bold;font-size:16px;margin-bottom:8px;text-align:center;color:#f1c40f;">P${p.id}${p.id===0?"(YOU)":""} ${p.trait?`[${p.trait.name}]`:""}</div>`;
+        const f=document.createElement("div"); f.className="field";
+        p.field.forEach((c,ci)=>{ const cd=document.createElement("div"); applyCardDesign(cd,c.value); if(pick&&allowedIds.includes(p.id)){cd.classList.add("selectable");cd.onclick=()=>humanPick(p.id,ci);} f.appendChild(cd); });
+        d.appendChild(f);
+        const hd=document.createElement("div"); hd.className="hand";
+        p.hand.forEach((c,idx)=>{ const cd=document.createElement("div"); if(p.id===0 && !isEnd){ applyCardDesign(cd,c.value); cd.onclick=()=>humanPlay(idx); } else if(!isEnd) { applyCardDesign(cd,null,true); cd.style.transform = `translateX(${(idx - (p.hand.length-1)/2) * 20}px) rotate(${(idx - (p.hand.length-1)/2) * 15}deg)`; cd.style.zIndex = idx; } hd.appendChild(cd); });
+        d.appendChild(hd);
+        const scContainer = document.createElement("div"); scContainer.className="score-container";
+        const anchor = document.createElement("div"); anchor.className="score-anchor"; anchor.style.cssText = "width:35px;height:52px;border:1px dashed rgba(255,255,255,0.3);border-radius:4px;z-index:1;";
+        if (p.id === 0 || isEnd) { const ss = [...p.score]; if(isEnd) ss.sort((a,b)=>a.value-b.value); ss.forEach((c) => { const scd = document.createElement("div"); applyCardDesign(scd, c.value); scd.style.width="35px"; scd.style.height="52px"; if(isEnd && c.isDead) scd.classList.add("dead"); scContainer.appendChild(scd); }); if(!isEnd) scContainer.appendChild(anchor); } 
+        else { p.score.forEach((c, sIdx) => { const scd = document.createElement("div"); applyCardDesign(scd, null, true); scd.style.width="35px"; scd.style.height="52px"; scd.classList.add("score-card-messy"); scd.style.left = (sIdx % 4) * 2 + "px"; scd.style.top = (sIdx % 3) * 2 + "px"; scd.style.transform = `rotate(${(sIdx * 13) % 40 - 20}deg)`; scContainer.appendChild(scd); }); scContainer.appendChild(anchor); }
+        d.appendChild(scContainer);
+        if (isEnd) { 
+            const resDiv = document.createElement("div"); resDiv.style.textAlign="center";
+            const lbl=document.createElement("div"); lbl.style.cssText="font-weight:bold;margin-top:10px;font-size:22px;color:#f1c40f;text-shadow:2px 2px 4px black;";
+            lbl.innerText=(p.isAbsoluteWinner?"★WINNER★ ":"") + `Score: ${p.total}`;
+            resDiv.appendChild(lbl);
+            if(p.id === 0) {
+                const crd = document.createElement("div"); crd.style.fontSize="10px"; crd.style.marginTop="5px"; crd.innerText="Game Design & Illustration: M";
+                const rb = document.createElement("button"); rb.style.marginTop="10px"; rb.innerText="REPLAY"; rb.onclick=()=>startGame();
+                resDiv.appendChild(crd); resDiv.appendChild(rb);
+            }
+            d.appendChild(resDiv);
+        }
+        t.appendChild(d);
+    });
+}
+</script>
+</body>
+</html>
