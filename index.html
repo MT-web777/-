@@ -2,17 +2,16 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=0.7, minimum-scale=0.3, maximum-scale=2.0, user-scalable=yes">
 <title>POTRABASH - Original Art Edition</title>
 <style>
 /* 背景・レイアウト */
-body{background:#0b6623 url('hosi.png') no-repeat center center; background-size: cover; color:white; font-family:sans-serif; margin:0; padding:0; overflow:hidden; height: 100vh;}
-.game-container { display: flex; justify-content: space-between; width: 100vw; height: 100vh; position: relative; }
-.main-play-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; overflow: auto; }
+body{background:#0b6623 url('hosi.png') no-repeat center center; background-size: cover; color:white; font-family:sans-serif; margin:0; padding:0; overflow:auto; min-height: 100vh;}
+.game-container { display: flex; justify-content: space-between; width: 100%; min-width: 1000px; height: 100%; position: relative; }
+.main-play-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
 
 /* サイドパネル（サマリー） */
-.side-panel { width: 280px; padding: 10px; box-sizing: border-box; z-index: 100; pointer-events: none; }
-.side-panel > * { pointer-events: auto; }
+.side-panel { width: 280px; padding: 10px; box-sizing: border-box; z-index: 100; }
 .status-box { background: rgba(0, 0, 0, 0.7); border: 2px solid #ffd700; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 #current-part { color: #ffd700; margin: 0 0 5px 0; font-size: 1.2rem; }
 .summary-box { background: rgba(0, 0, 0, 0.85); border-left: 2px solid rgba(255, 215, 0, 0.3); padding: 12px; height: 95vh; font-size: 0.75rem; overflow-y: auto; line-height: 1.4; }
@@ -171,7 +170,7 @@ function initGame() {
 
 function backToTitle() { location.reload(); }
 
-// --- AI強化思考ロジック (贈与) ---
+// --- AI思考ロジック (帳消しリーチへの執念) ---
 function aiThink(p) {
     const trait = p.trait.name;
     const mySum = p.field.reduce((a,v)=>a+v.value, 0);
@@ -183,7 +182,7 @@ function aiThink(p) {
     const nextPlayerSum = nextPlayer.field.reduce((a,v)=>a+v.value, 0);
 
     const centerIsOne = (centerCard && centerCard.value === 1);
-    const myMinusCount = centerCard && centerCard.value < 0 ? p.score.filter(s => s.value === centerCard.value).length : 0;
+    const myMinusCount = (centerCard && centerCard.value < 0) ? p.score.filter(s => s.value === centerCard.value).length : 0;
     const hasSameMinus = (myMinusCount > 0);
     const isSpecialTrait = (trait === "慎重" || trait === "大器" || trait === "刺客");
 
@@ -204,7 +203,6 @@ function aiThink(p) {
         else if (isSpecialTrait) {
             if (centerIsOne && proj > maxOther) { score += 100000; }
             else if (hasSameMinus && proj > maxOther) {
-                // 帳消しリーチ(2枚所持)なら超絶優先、1枚なら優先
                 score += (myMinusCount === 2) ? 80000 : 40000;
             }
             else {
@@ -212,8 +210,6 @@ function aiThink(p) {
                 if (c.value < 0) score += 500;
                 if (proj > nextPlayerSum) score -= 2000;
             }
-            if (trait === "慎重") { if(p.score.some(s=>s.value===c.value)) score += 300; }
-            if (trait === "大器") { if(c.value === 1) score -= 400; }
         }
 
         if ((centerIsOne || hasSameMinus) && others.some(o => o.field.reduce((a,v)=>a+v.value,0) === proj && proj > 0)) {
@@ -225,7 +221,6 @@ function aiThink(p) {
     return {action: "play", index: choices[0].idx};
 }
 
-// --- AI強化思考ロジック (獲得・奪い合い) ---
 function nextPick() {
     if (!players.some(p => p.field.length)) { 
         startIndex = (pickIndex) % playerCount; 
@@ -241,32 +236,23 @@ function nextPick() {
     const trait = p.trait.name; let bestT = targets[0], bestCi = 0, bestScore = -999999;
     targets.forEach(t => {
         t.field.forEach((c, ci) => {
-            let s = 0; const isHuman = (t.id === 0);
+            let s = 0;
             const myOwnedCount = p.score.filter(sc => sc.value === c.value).length;
             
-            // ★最優先：3枚揃って消えるカード (帳消し狙い)
-            if (myOwnedCount === 2) {
-                s += (c.value < 0) ? 200000 : 50000; // マイナス札の帳消しを最高評価
-            } 
-            // 次点：2枚目になるカード (リーチ作り)
-            else if (myOwnedCount === 1) {
-                s += (c.value < 0) ? 15000 : 10000;
-            }
+            if (myOwnedCount === 2) { s += (c.value < 0) ? 200000 : 50000; } 
+            else if (myOwnedCount === 1) { s += (c.value < 0) ? 15000 : 10000; }
 
             if (trait === "刺客") {
-                if (isHuman) { const hCount = t.score.filter(sc => sc.value === c.value).length; if (hCount === 2) { if (c.value < 0) s += 20000; if (c.value >= 1) s -= 10000; } }
-                if (c.value === 1 && myOwnedCount < 2) s += 12000; // 1は常に強い
+                if (t.id === 0 && t.score.filter(sc => sc.value === c.value).length === 2) { if (c.value < 0) s += 20000; }
+                if (c.value === 1 && myOwnedCount < 2) s += 12000;
             } else if (trait === "大器") {
                 if (c.value === 1 && myOwnedCount < 2) s += 30000;
             } else if (trait === "強欲") {
                 if (c.value >= 3 && myOwnedCount < 2) s += 8000;
             } else if (trait === "慎重") {
-                if (c.value < 0 && myOwnedCount === 0) s -= 10000; // 持ってないマイナスは避ける
+                if (c.value < 0 && myOwnedCount === 0) s -= 10000;
             }
-
-            // 場に残っている合計値が高いプレイヤーから奪う
             const tSum = t.field.reduce((a,v)=>a+v.value,0); if (tSum > 0) s += tSum * 150;
-            
             if (s > bestScore) { bestScore = s; bestT = t; bestCi = ci; }
         });
     });
@@ -306,10 +292,7 @@ function endGame(){
     updateUIPanels("終了", "最終結果", "お疲れ様でした！");
     players.forEach(p => {
         let groups = {};
-        p.score.forEach(c => { 
-            if (!groups[c.value]) groups[c.value] = []; 
-            groups[c.value].push(c); 
-        });
+        p.score.forEach(c => { if (!groups[c.value]) groups[c.value] = []; groups[c.value].push(c); });
         p.total = 0; p.score.forEach(c => c.isDead = false);
         Object.keys(groups).forEach(val => {
             let cards = groups[val]; let numDead = Math.floor(cards.length / 3) * 3;
@@ -324,9 +307,7 @@ function endGame(){
         p.oneCount = p.score.filter(c => c.value === 1 && !c.isDead).length;
         if (p.oneCount > maxOnes) maxOnes = p.oneCount;
     });
-    players.forEach(p => {
-        p.isAbsoluteWinner = (p.total === maxTotal && (p.oneCount || 0) === maxOnes);
-    });
+    players.forEach(p => { p.isAbsoluteWinner = (p.total === maxTotal && (p.oneCount || 0) === maxOnes); });
     render();
 }
 
@@ -352,18 +333,10 @@ function advanceTurn(){ turnIndex++; if(turnIndex>=playerCount){ turnIndex=0; la
 function nextTurn(){ 
     if(lap>3) return startPick(); 
     const p=players[getPlayerIdx(turnIndex)]; 
-    updateUIPanels("贈与パート", `フェイズ ${lap}`, (p.id === 0) ? "カードを選択してください。" : `P${p.id}が考え中...`);
+    updateUIPanels("贈与パート", `フェイズ ${lap}`, (p.id === 0) ? "選択してください。" : `P${p.id}が思考中...`);
     if(p.id!==0 && phase!=="end" && phase!=="title") setTimeout(()=>aiPlay(p),800); 
 }
-function aiPlay(p){ 
-    const d=aiThink(p); 
-    if(d.action==="pass") advanceTurn(); 
-    else { 
-        const c=p.hand.splice(d.index,1)[0]; p.field.push(c); lastPlayOrder.push(p.id); 
-        if(deck.length) { p.hand.push(deck.pop()); updateInfo(); }
-        playSwooshSound(); advanceTurn(); 
-    } 
-}
+function aiPlay(p){ const d=aiThink(p); if(d.action==="pass") advanceTurn(); else { const c=p.hand.splice(d.index,1)[0]; p.field.push(c); lastPlayOrder.push(p.id); if(deck.length) { p.hand.push(deck.pop()); updateInfo(); } playSwooshSound(); advanceTurn(); } }
 function humanPlay(i){ if(phase!=="play"||getPlayerIdx(turnIndex)!==0)return; const p=players[0]; const c=p.hand.splice(i,1)[0]; p.field.push(c); lastPlayOrder.push(0); if(deck.length){p.hand.push(deck.pop()); updateInfo();} playSwooshSound(); advanceTurn(); }
 function pass(){ if(lap===1||phase!=="play"||getPlayerIdx(turnIndex)!==0)return; advanceTurn(); }
 
@@ -372,8 +345,7 @@ function nextRound(){
     phase="play"; lap=1; turnIndex=0; lastPlayOrder=[]; players.forEach(p=>p.field=[]);
     if(deck.length > 0) { centerCard=deck.pop(); updateInfo(); } else return endGame();
     applyCardDesign(document.getElementById("centerCard"), centerCard.value);
-    document.getElementById("centerCard").style.visibility="visible";
-    render(); nextTurn();
+    document.getElementById("centerCard").style.visibility="visible"; render(); nextTurn();
 }
 
 function applyCardDesign(el, val, isBack=false) {
@@ -404,68 +376,23 @@ function render(pick=false,allowedIds=[]){
     const positions=posConfig[players.length];
 
     players.forEach((p,i)=>{
-        const d=document.createElement("div"); 
-        d.className="player player-id-"+p.id+(p.id===0?" human":"") + (isEnd ? " reveal-all" : "");
+        const d=document.createElement("div"); d.className="player player-id-"+p.id+(p.id===0?" human":"") + (isEnd ? " reveal-all" : "");
         d.style.left=positions[i].x+"px"; d.style.top=positions[i].y+"px";
         if(!isEnd && phase==="play" && getPlayerIdx(turnIndex)===p.id) d.style.boxShadow="0 0 20px #f1c40f";
         if(isEnd && p.isAbsoluteWinner) d.style.outline="5px solid #f1c40f";
-        let h=`<div style="font-weight:bold;font-size:16px;margin-bottom:8px;text-align:center;color:#f1c40f;">P${p.id}${p.id===0?"(あなた)":""} ${p.trait?`[${p.trait.name}]`:""}</div>`;
-        d.innerHTML=h;
+        d.innerHTML=`<div style="font-weight:bold;font-size:16px;margin-bottom:8px;text-align:center;color:#f1c40f;">P${p.id}${p.id===0?"(YOU)":""} ${p.trait?`[${p.trait.name}]`:""}</div>`;
         const f=document.createElement("div"); f.className="field";
-        p.field.forEach((c,ci)=>{ 
-            const cd=document.createElement("div"); applyCardDesign(cd,c.value); 
-            if(pick&&allowedIds.includes(p.id)){cd.classList.add("selectable");cd.onclick=()=>humanPick(p.id,ci);} f.appendChild(cd); 
-        });
+        p.field.forEach((c,ci)=>{ const cd=document.createElement("div"); applyCardDesign(cd,c.value); if(pick&&allowedIds.includes(p.id)){cd.classList.add("selectable");cd.onclick=()=>humanPick(p.id,ci);} f.appendChild(cd); });
         d.appendChild(f);
         const hd=document.createElement("div"); hd.className="hand";
-        p.hand.forEach((c,idx)=>{
-            const cd=document.createElement("div");
-            if(p.id===0 && !isEnd){ applyCardDesign(cd,c.value); cd.onclick=()=>humanPlay(idx); } 
-            else if(!isEnd) {
-                applyCardDesign(cd,null,true);
-                const angle = (idx - (p.hand.length-1)/2) * 15;
-                const tx = (idx - (p.hand.length-1)/2) * 20;
-                cd.style.transform = `translateX(${tx}px) rotate(${angle}deg)`;
-                cd.style.zIndex = idx;
-            }
-            hd.appendChild(cd);
-        });
+        p.hand.forEach((c,idx)=>{ const cd=document.createElement("div"); if(p.id===0 && !isEnd){ applyCardDesign(cd,c.value); cd.onclick=()=>humanPlay(idx); } else if(!isEnd) { applyCardDesign(cd,null,true); cd.style.transform = `translateX(${(idx - (p.hand.length-1)/2) * 20}px) rotate(${(idx - (p.hand.length-1)/2) * 15}deg)`; cd.style.zIndex = idx; } hd.appendChild(cd); });
         d.appendChild(hd);
         const scContainer = document.createElement("div"); scContainer.className="score-container";
-        const anchor = document.createElement("div"); anchor.className="score-anchor"; 
-        anchor.style.cssText = "width:35px;height:52px;border:1px dashed rgba(255,255,255,0.3);border-radius:4px;z-index:1;";
-        if (p.id === 0 || isEnd) {
-            const ss = [...p.score]; if(isEnd) ss.sort((a,b)=>a.value-b.value);
-            ss.forEach((c) => {
-                const scd = document.createElement("div"); applyCardDesign(scd, c.value);
-                scd.style.width="35px"; scd.style.height="52px";
-                if(isEnd && c.isDead) scd.classList.add("dead");
-                scContainer.appendChild(scd);
-            });
-            if(!isEnd) scContainer.appendChild(anchor);
-        } else {
-            p.score.forEach((c, sIdx) => {
-                const scd = document.createElement("div"); applyCardDesign(scd, null, true);
-                scd.style.width="35px"; scd.style.height="52px"; scd.classList.add("score-card-messy");
-                const randX = (sIdx % 4) * 2; const randY = (sIdx % 3) * 2; const randRot = (sIdx * 13) % 40 - 20;
-                scd.style.left = randX + "px"; scd.style.top = randY + "px"; scd.style.transform = `rotate(${randRot}deg)`;
-                scContainer.appendChild(scd);
-            });
-            scContainer.appendChild(anchor);
-        }
+        const anchor = document.createElement("div"); anchor.className="score-anchor"; anchor.style.cssText = "width:35px;height:52px;border:1px dashed rgba(255,255,255,0.3);border-radius:4px;z-index:1;";
+        if (p.id === 0 || isEnd) { const ss = [...p.score]; if(isEnd) ss.sort((a,b)=>a.value-b.value); ss.forEach((c) => { const scd = document.createElement("div"); applyCardDesign(scd, c.value); scd.style.width="35px"; scd.style.height="52px"; if(isEnd && c.isDead) scd.classList.add("dead"); scContainer.appendChild(scd); }); if(!isEnd) scContainer.appendChild(anchor); } 
+        else { p.score.forEach((c, sIdx) => { const scd = document.createElement("div"); applyCardDesign(scd, null, true); scd.style.width="35px"; scd.style.height="52px"; scd.classList.add("score-card-messy"); scd.style.left = (sIdx % 4) * 2 + "px"; scd.style.top = (sIdx % 3) * 2 + "px"; scd.style.transform = `rotate(${(sIdx * 13) % 40 - 20}deg)`; scContainer.appendChild(scd); }); scContainer.appendChild(anchor); }
         d.appendChild(scContainer);
-        if (isEnd) {
-            const resDiv = document.createElement("div"); resDiv.style.textAlign="center";
-            const lbl=document.createElement("div"); lbl.style.cssText="font-weight:bold;margin-top:10px;font-size:22px;color:#f1c40f;text-shadow:2px 2px 4px black;";
-            lbl.innerText=(p.isAbsoluteWinner?"★WINNER★ ":"") + `Score: ${p.total}`; 
-            resDiv.appendChild(lbl);
-            if(p.id === 0) { 
-                const crd = document.createElement("div"); crd.style.fontSize="10px"; crd.style.marginTop="5px"; crd.innerText="Game Design & Illustration: M ";
-                const rb = document.createElement("button"); rb.style.marginTop="10px"; rb.innerText="もう一度遊ぶ"; rb.onclick=()=>startGame(); 
-                resDiv.appendChild(crd); resDiv.appendChild(rb); 
-            }
-            d.appendChild(resDiv);
-        }
+        if (isEnd) { const resDiv = document.createElement("div"); resDiv.style.textAlign="center"; const lbl=document.createElement("div"); lbl.style.cssText="font-weight:bold;margin-top:10px;font-size:22px;color:#f1c40f;text-shadow:2px 2px 4px black;"; lbl.innerText=(p.isAbsoluteWinner?"★WINNER★ ":"") + `Score: ${p.total}`; resDiv.appendChild(lbl); if(p.id === 0) { const crd = document.createElement("div"); crd.style.fontSize="10px"; crd.style.marginTop="5px"; crd.innerText="Game Design & Illustration: M "; const rb = document.createElement("button"); rb.style.marginTop="10px"; rb.innerText="REPLAY"; rb.onclick=()=>startGame(); resDiv.appendChild(crd); resDiv.appendChild(rb); } d.appendChild(resDiv); }
         t.appendChild(d);
     });
 }
