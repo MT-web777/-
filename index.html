@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=0.7, minimum-scale=0.3, maximum-scale=2.0, user-scalable=yes">
-<title>POTRABASH - Original Art Edition</title>
+<title>POTRABASH - Final Strategic Edition</title>
 <style>
 /* 背景・レイアウト */
 body{background:#0b6623 url('hosi.png') no-repeat center center; background-size: cover; color:white; font-family:sans-serif; margin:0; padding:0; overflow:auto; min-height: 100vh;}
@@ -27,10 +27,9 @@ body{background:#0b6623 url('hosi.png') no-repeat center center; background-size
 .summary-section { margin-bottom: 12px; padding: 10px; transition: 0.3s; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
 .summary-section h4 { color: #ffd700; margin: 0 0 8px 0; font-size: 0.9rem; border-bottom: 1px solid rgba(255,215,0,0.3); }
 .active-section { background: rgba(255, 215, 0, 0.2); border: 1px solid #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.2); }
-.summary-box ul { padding-left: 18px; margin: 0; }
 .lang-en { color: #aaa; font-style: italic; display: block; font-size: 0.7rem; margin-top: 2px; }
 
-/* ゲームボード要素 */
+/* ゲームボード */
 #titleScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; background: rgba(0,0,0,0.4); }
 .title-logo { width: 600px; max-width: 90%; height: auto; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(0,0,0,0.5)); }
 #titleScreen .menu { background: rgba(0,0,0,0.7); padding: 30px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.2); text-align: center; backdrop-filter: blur(5px); }
@@ -48,12 +47,9 @@ body{background:#0b6623 url('hosi.png') no-repeat center center; background-size
 .player:not(.human) .hand .card { position: absolute; margin-left: -20px; }
 
 .score-container { display: flex; gap: 3px; justify-content: flex-start; flex-wrap: wrap; margin-top: 10px; min-height: 60px; position: relative; }
-.score-card-messy { position: absolute; }
-
 .v-3{background-color:#8b0000;}.v-2{background-color:#c0392b;}.v1{background-color:#ecf0f1; color:black; text-shadow: none;}.v3{background-color:#5dade2;}.v4{background-color:#f4d03f; color:black; text-shadow: none;}.back{background-color:#1c2833; border:1px solid #34495e;}
 .dead{filter: grayscale(100%) brightness(40%); border: 3px solid red !important;}.dead::after{content:"×";font-size:50px;position:absolute;color:#ff0000;font-weight:900;top:50%;left:50%;transform:translate(-50%,-50%);text-shadow:none;z-index:100;}
 .selectable{outline:4px solid #fff;cursor:pointer;animation:pulse 0.8s infinite}
-@keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
 
 button { padding: 10px 20px; cursor: pointer; border-radius: 8px; border: none; background: #eee; font-weight: bold; color: #333; transition: 0.2s; touch-action: manipulation;}
 .btn-large { font-size: 24px; padding: 15px 40px; background: #f1c40f; color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
@@ -68,10 +64,6 @@ button { padding: 10px 20px; cursor: pointer; border-radius: 8px; border: none; 
     <img src="rogo.png" alt="POTRABASH" class="title-logo">
     <div class="menu">
         <p style="font-size: 18px; margin-bottom: 20px;">Nightmare Mode (Original Art)</p>
-        <div style="margin-bottom: 25px;">
-            <button onclick="window.open('rule.pdf', '_blank')" style="background:#444; color:white; border:1px solid #777; padding:8px 15px; margin-bottom:10px; width:200px;">📖 ルールを読む (日本語)</button><br>
-            <button onclick="window.open('rule_en.pdf', '_blank')" style="background:#224; color:white; border:1px solid #55a; padding:8px 15px; width:200px;">🌍 English Rules (PDF)</button>
-        </div>
         <select id="playerCount" style="font-size: 20px; padding: 5px; margin-bottom: 30px;">
             <option value="3">3人</option>
             <option value="4" selected>4人</option>
@@ -107,22 +99,20 @@ button { padding: 10px 20px; cursor: pointer; border-radius: 8px; border: none; 
             <section class="summary-section active-section" id="sum-gift">
                 <h4>1. 贈与パート (Gift)</h4>
                 <ul>
-                    <li><b>1周目:</b> 全員必ず1枚出す<br><span class="lang-en">Everyone must play 1 card.</span></li>
-                    <li><b>2・3周目:</b> 出すかパスか選択<br><span class="lang-en">Play or Pass (Optional).</span></li>
-                    <li><b>勝利条件:</b> 合計最大値が中央獲得。同点なら後攻優先。<br><span class="lang-en">Highest sum wins. Last player wins ties.</span></li>
+                    <li>1周目: 全員必ず出す</li>
+                    <li>2・3周目: 出すかパスか選択</li>
+                    <li>合計最大値が中央獲得。同点は後攻勝ち。</li>
                 </ul>
             </section>
             <section class="summary-section" id="sum-acquisition">
                 <h4>2. 獲得パート (Acquisition)</h4>
-                <ul>
-                    <li>中央勝者から順に<b>他人の場</b>から1枚奪う<br><span class="lang-en">Winner steals 1 card from others.</span></li>
-                </ul>
+                <ul><li>勝者から順に<b>他人の場</b>から1枚奪う</li></ul>
             </section>
             <section class="summary-section">
                 <h4>3. スコア・特殊ルール</h4>
                 <ul>
-                    <li><b>3枚で消滅:</b> 3枚揃うと捨て札（0点）。<br><span class="lang-en">Sets of 3 are discarded.</span></li>
-                    <li><b>最終勝敗:</b> 合計点。同点は1の数で判定。<br><span class="lang-en">Highest score wins. Tie: Most "1"s.</span></li>
+                    <li><b>3枚で消滅:</b> 1以外が3枚揃うと0点。</li>
+                    <li><b>1は最強:</b> 消滅せず、同点時に1が多い方が勝利。</li>
                 </ul>
             </section>
         </div>
@@ -132,7 +122,6 @@ button { padding: 10px 20px; cursor: pointer; border-radius: 8px; border: none; 
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// 出札音
 function playSwooshSound() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const duration = 0.15;
@@ -143,23 +132,18 @@ function playSwooshSound() {
     const noise = audioCtx.createBufferSource();
     noise.buffer = buffer;
     const filter = audioCtx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(3000, audioCtx.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(1500, audioCtx.currentTime + duration);
+    filter.type = 'bandpass'; filter.frequency.setValueAtTime(3000, audioCtx.currentTime);
     const gainNode = audioCtx.createGain();
-    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime); gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
     noise.connect(filter); filter.connect(gainNode); gainNode.connect(audioCtx.destination);
     noise.start(); noise.stop(audioCtx.currentTime + duration);
 }
 
-// パス音（空振り音）
 function playPassSound() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+    osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
     gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
     gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
@@ -168,24 +152,16 @@ function playPassSound() {
 }
 
 const personalities = [ { name: "強欲" }, { name: "慎重" }, { name: "刺客" }, { name: "大器" } ];
-let players=[], deck=[], playerCount=4, startIndex=0, turnIndex=0, lap=1, centerCard=null, phase="title", pickIndex=0;
-let lastPlayOrder = []; 
+let players=[], deck=[], playerCount=4, startIndex=0, turnIndex=0, lap=1, centerCard=null, phase="title", pickIndex=0, lastPlayOrder = []; 
 
 function showPassMessage(playerId) {
-    playPassSound(); // パス時に音を鳴らす
+    playPassSound();
     const pEl = document.querySelector(`.player-id-${playerId}`);
     if(!pEl) return;
     const msg = document.createElement("div");
     msg.innerText = "PASS";
-    msg.style.cssText = `
-        position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
-        background: rgba(255,255,255,0.9); color: #333; padding: 5px 15px;
-        border-radius: 20px; font-weight: bold; font-size: 14px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 1000;
-        animation: fadeUp 1s forwards; border: 1px solid #666;
-    `;
-    pEl.appendChild(msg);
-    setTimeout(() => msg.remove(), 1000);
+    msg.style.cssText = `position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); color: #333; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 1000; animation: fadeUp 1s forwards; border: 1px solid #666;`;
+    pEl.appendChild(msg); setTimeout(() => msg.remove(), 1000);
 }
 
 function updateUIPanels(part, phaseName, instruct) {
@@ -205,12 +181,12 @@ function initGame() {
     document.getElementById("sideStatus").style.display = "block";
     document.getElementById("right-panel").style.display = "block";
     const bgm = document.getElementById("bgm"); bgm.volume = 0.3; bgm.play().catch(e => {});
-    if (audioCtx.state === 'suspended') audioCtx.resume();
     startGame();
 }
 
 function backToTitle() { location.reload(); }
 
+// --- AI思考：出すフェーズ ---
 function aiThink(p) {
     const trait = p.trait.name;
     const mySum = p.field.reduce((a,v)=>a+v.value, 0);
@@ -218,20 +194,51 @@ function aiThink(p) {
     const maxOther = Math.max(...others.map(o => o.field.reduce((a,v)=>a+v.value, 0)));
     const centerIsOne = (centerCard && centerCard.value === 1);
     const myMinusCount = (centerCard && centerCard.value < 0) ? p.score.filter(s => s.value === centerCard.value).length : 0;
-    const isSpecialTrait = (trait === "慎重" || trait === "大器" || trait === "刺客");
 
-    if (!( (centerIsOne || myMinusCount > 0) && isSpecialTrait )) {
+    if (!( (centerIsOne || myMinusCount > 0) )) {
         if (lap > 1 && mySum > maxOther && mySum > 0) return {action: "pass"};
         if (lap > 2 && mySum === maxOther && mySum > 0) return {action: "pass"};
     }
     
     const choices = p.hand.map((c, idx) => {
-        let score = 0; const proj = mySum + c.value;
-        if (centerIsOne && proj > maxOther) score += 100000;
-        else if (myMinusCount > 0 && proj > maxOther) score += (myMinusCount === 2) ? 80000 : 40000;
+        let score = (centerIsOne && (mySum+c.value) > maxOther) ? 100000 : 0;
+        if(myMinusCount > 0 && (mySum+c.value) > maxOther) score += 50000;
         return {idx, score: score + Math.random() * 50};
     }).sort((a,b)=>b.score - a.score);
     return {action: "play", index: choices[0].idx};
+}
+
+// --- AI思考：獲得フェーズ（1を守り、マイナスを消す） ---
+function nextPick() {
+    if (!players.some(p => p.field.length)) { 
+        startIndex = (pickIndex) % playerCount; 
+        if (deck.length === 0 && players[0].hand.length === 0) return endGame(); 
+        return nextRound(); 
+    }
+    const p = players[pickIndex];
+    let others = players.filter(o => o.id !== p.id && o.field.length);
+    let targets = others.length > 0 ? others : [p];
+
+    updateUIPanels("獲得パート", `回収中 (P${p.id})`, (p.id === 0) ? "場から1枚取ってください。" : `P${p.id}が獲得中...`);
+
+    if (p.id === 0) { render(true, targets.map(t => t.id)); return; }
+
+    let bestT = targets[0], bestCi = 0, bestScore = -999999;
+    targets.forEach(t => {
+        t.field.forEach((c, ci) => {
+            let s = 0;
+            const myOwned = p.score.filter(sc => sc.value === c.value).length;
+
+            if (c.value === 1) { s += 90000; } // 1は絶対。
+            else if (myOwned === 2 && c.value < 0) { s += 500000; } // マイナス相殺を最優先。
+            else if (myOwned === 2 && c.value > 1) { s -= 100000; } // プラスは3枚にしない。
+            else if (myOwned === 1 && c.value < 0) { s += 40000; } // マイナス消しのリーチ。
+            else { s += c.value * 5000; }
+
+            if (s > bestScore) { bestScore = s; bestT = t; bestCi = ci; }
+        });
+    });
+    executePick(p.id, bestT.id, bestCi);
 }
 
 function executePick(pickerId, targetId, cardIdx) {
@@ -242,22 +249,11 @@ function executePick(pickerId, targetId, cardIdx) {
     animateCardSlide(fromEl, `.player-id-${pickerId} .score-anchor`, c.value, (pickerId !== 0), () => { picker.score.push(c); pickIndex = (pickIndex + 1) % playerCount; render(); setTimeout(nextPick, 300); });
 }
 
-function nextPick() {
-    if (!players.some(p => p.field.length)) { startIndex = (pickIndex) % playerCount; if (deck.length === 0 && players[0].hand.length === 0) return endGame(); return nextRound(); }
-    const p = players[pickIndex];
-    let others = players.filter(o => o.id !== p.id && o.field.length);
-    let targets = others.length > 0 ? others : [p];
-    updateUIPanels("獲得パート", `回収中 (P${p.id})`, (p.id === 0) ? "場から1枚取ってください。" : `P${p.id}が獲得中...`);
-    if (p.id === 0) { render(true, targets.map(t => t.id)); return; }
-    executePick(p.id, targets[0].id, 0);
-}
-
-function humanPick(targetIdx, cardIdx) { if (phase !== "pick" || pickIndex !== 0) return; executePick(0, targetIdx, cardIdx); }
+function humanPick(tIdx, cIdx) { if (phase === "pick" && pickIndex === 0) executePick(0, tIdx, cIdx); }
 
 function startPick(){
     phase="pick"; const centerEl = document.getElementById("centerCard");
-    const sums = players.map(p => p.field.reduce((a,c)=>a+c.value,0));
-    const maxSum = Math.max(...sums);
+    const sums = players.map(p => p.field.reduce((a,c)=>a+c.value,0)), maxSum = Math.max(...sums);
     let winners = []; sums.forEach((s, idx) => { if(s === maxSum) winners.push(idx); });
     let winner = winners[0];
     if (winners.length > 1) { for(let i = lastPlayOrder.length - 1; i >= 0; i--) { if(winners.includes(lastPlayOrder[i])) { winner = lastPlayOrder[i]; break; } } }
@@ -271,11 +267,16 @@ function endGame(){
     players.forEach(p => {
         let groups = {}; p.score.forEach(c => { if (!groups[c.value]) groups[c.value] = []; groups[c.value].push(c); });
         p.total = 0; p.score.forEach(c => c.isDead = false);
-        Object.keys(groups).forEach(val => { let cards = groups[val]; let numDead = Math.floor(cards.length / 3) * 3; for (let i = 0; i < numDead; i++) cards[i].isDead = true; });
+        Object.keys(groups).forEach(val => {
+            const v = parseInt(val);
+            if (v !== 1) { // 1は消えない
+                let cards = groups[val]; let numDead = Math.floor(cards.length / 3) * 3;
+                for (let i = 0; i < numDead; i++) cards[i].isDead = true;
+            }
+        });
         p.score.forEach(c => { if (!c.isDead) p.total += c.value; });
     });
-    let maxTotal = Math.max(...players.map(p => p.total));
-    let candidates = players.filter(p => p.total === maxTotal);
+    let maxTotal = Math.max(...players.map(p => p.total)), candidates = players.filter(p => p.total === maxTotal);
     let maxOnes = Math.max(...candidates.map(p => p.score.filter(c => c.value === 1 && !c.isDead).length));
     players.forEach(p => { p.isAbsoluteWinner = (p.total === maxTotal && p.score.filter(c => c.value === 1 && !c.isDead).length === maxOnes); });
     render();
@@ -300,34 +301,9 @@ function nextTurn(){
     if(p.id!==0 && phase!=="end" && phase!=="title") setTimeout(()=>aiPlay(p),800); 
 }
 
-function aiPlay(p){ 
-    const d=aiThink(p); 
-    if(d.action==="pass") { 
-        showPassMessage(p.id); 
-        advanceTurn(); 
-    } else { 
-        const c=p.hand.splice(d.index,1)[0]; 
-        p.field.push(c); 
-        lastPlayOrder.push(p.id); 
-        if(deck.length) { p.hand.push(deck.pop()); updateInfo(); } 
-        playSwooshSound(); 
-        advanceTurn(); 
-    } 
-}
-
-function humanPlay(i){ 
-    if(phase!=="play"||getPlayerIdx(turnIndex)!==0)return; 
-    const p=players[0]; const c=p.hand.splice(i,1)[0]; 
-    p.field.push(c); lastPlayOrder.push(0); 
-    if(deck.length){p.hand.push(deck.pop()); updateInfo();} 
-    playSwooshSound(); advanceTurn(); 
-}
-
-function pass(){ 
-    if(lap===1||phase!=="play"||getPlayerIdx(turnIndex)!==0)return; 
-    showPassMessage(0); 
-    advanceTurn(); 
-}
+function aiPlay(p){ const d=aiThink(p); if(d.action==="pass") { showPassMessage(p.id); advanceTurn(); } else { const c=p.hand.splice(d.index,1)[0]; p.field.push(c); lastPlayOrder.push(p.id); if(deck.length) p.hand.push(deck.pop()); playSwooshSound(); advanceTurn(); } }
+function humanPlay(i){ if(phase!=="play"||getPlayerIdx(turnIndex)!==0)return; const p=players[0], c=p.hand.splice(i,1)[0]; p.field.push(c); lastPlayOrder.push(0); if(deck.length)p.hand.push(deck.pop()); playSwooshSound(); advanceTurn(); }
+function pass(){ if(lap===1||phase!=="play"||getPlayerIdx(turnIndex)!==0)return; showPassMessage(0); advanceTurn(); }
 
 function nextRound(){
     phase="play"; lap=1; turnIndex=0; lastPlayOrder=[]; players.forEach(p=>p.field=[]);
@@ -345,8 +321,8 @@ const vClass=v=>v===-3?"v-3":v===-2?"v-2":v===1?"v1":v===3?"v3":"v4";
 
 function animateCardSlide(fromEl, toSelector, value, hideOnEnd, callback) {
     if (!fromEl) return callback();
-    playSwooshSound(); const fromRect = fromEl.getBoundingClientRect();
-    const toEl = document.querySelector(toSelector); if (!toEl) return callback();
+    const fromRect = fromEl.getBoundingClientRect(), toEl = document.querySelector(toSelector);
+    if (!toEl) return callback();
     const toRect = toEl.getBoundingClientRect();
     const clone = document.createElement('div'); applyCardDesign(clone, value, fromEl.classList.contains('back'));
     clone.classList.add('flying-card'); clone.style.width = fromRect.width + 'px'; clone.style.height = fromRect.height + 'px';
@@ -376,23 +352,29 @@ function render(pick=false,allowedIds=[]){
         d.appendChild(hd);
         const scContainer = document.createElement("div"); scContainer.className="score-container";
         const anchor = document.createElement("div"); anchor.className="score-anchor"; anchor.style.cssText = "width:35px;height:52px;border:1px dashed rgba(255,255,255,0.3);border-radius:4px;z-index:1;";
-        if (p.id === 0 || isEnd) { const ss = [...p.score]; if(isEnd) ss.sort((a,b)=>a.value-b.value); ss.forEach((c) => { const scd = document.createElement("div"); applyCardDesign(scd, c.value); scd.style.width="35px"; scd.style.height="52px"; if(isEnd && c.isDead) scd.classList.add("dead"); scContainer.appendChild(scd); }); if(!isEnd) scContainer.appendChild(anchor); } 
-        else { p.score.forEach((c, sIdx) => { const scd = document.createElement("div"); applyCardDesign(scd, null, true); scd.style.width="35px"; scd.style.height="52px"; scd.classList.add("score-card-messy"); scd.style.left = (sIdx % 4) * 2 + "px"; scd.style.top = (sIdx % 3) * 2 + "px"; scd.style.transform = `rotate(${(sIdx * 13) % 40 - 20}deg)`; scContainer.appendChild(scd); }); scContainer.appendChild(anchor); }
+        if (p.id === 0 || isEnd) { 
+            const ss = [...p.score]; if(isEnd) ss.sort((a,b)=>a.value-b.value); 
+            ss.forEach((c) => { const scd = document.createElement("div"); applyCardDesign(scd, c.value); scd.style.width="35px"; scd.style.height="52px"; if(isEnd && c.isDead) scd.classList.add("dead"); scContainer.appendChild(scd); });
+            if(!isEnd) scContainer.appendChild(anchor);
+        } else {
+            p.score.forEach((c, sIdx) => { const scd = document.createElement("div"); applyCardDesign(scd, null, true); scd.style.width="35px"; scd.style.height="52px"; scd.style.transform = `rotate(${(sIdx * 13) % 40 - 20}deg)`; scContainer.appendChild(scd); });
+            scContainer.appendChild(anchor);
+        }
         d.appendChild(scContainer);
-        if (isEnd) { 
+        if (isEnd) {
             const resDiv = document.createElement("div"); resDiv.style.textAlign="center";
             const lbl=document.createElement("div"); lbl.style.cssText="font-weight:bold;margin-top:10px;font-size:22px;color:#f1c40f;text-shadow:2px 2px 4px black;";
             lbl.innerText=(p.isAbsoluteWinner?"★WINNER★ ":"") + `Score: ${p.total}`;
             resDiv.appendChild(lbl);
             if(p.id === 0) {
-                const crd = document.createElement("div"); crd.style.fontSize="10px"; crd.style.marginTop="5px"; crd.innerText="Game Design & Illustration: M";
                 const rb = document.createElement("button"); rb.style.marginTop="10px"; rb.innerText="REPLAY"; rb.onclick=()=>startGame();
-                resDiv.appendChild(crd); resDiv.appendChild(rb);
+                resDiv.appendChild(rb);
             }
             d.appendChild(resDiv);
         }
         t.appendChild(d);
     });
+    updateInfo();
 }
 </script>
 </body>
