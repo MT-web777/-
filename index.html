@@ -242,7 +242,6 @@ function executePick(pickerId, targetId, cardIdx) {
     animateCardSlide(fromEl, `.player-id-${pickerId} .score-anchor`, c.value, (pickerId !== 0), () => { picker.score.push(c); pickIndex = (pickIndex + 1) % playerCount; render(); setTimeout(nextPick, 300); });
 }
 
-// --- AIの獲得ロジック：マイナス相殺を最優先するようにアップデート ---
 function nextPick() {
     if (!players.some(p => p.field.length)) { startIndex = (pickIndex) % playerCount; if (deck.length === 0 && players[0].hand.length === 0) return endGame(); return nextRound(); }
     const p = players[pickIndex];
@@ -251,7 +250,7 @@ function nextPick() {
     updateUIPanels("獲得パート", `回収中 (P${p.id})`, (p.id === 0) ? "場から1枚取ってください。" : `P${p.id}が獲得中...`);
     if (p.id === 0) { render(true, targets.map(t => t.id)); return; }
 
-    // AIの思考
+    // AIの思考ロジック（マイナス相殺を最優先）
     let bestT = targets[0], bestCi = 0, bestScore = -999999;
     targets.forEach(t => {
         t.field.forEach((c, ci) => {
@@ -288,7 +287,12 @@ function endGame(){
     players.forEach(p => {
         let groups = {}; p.score.forEach(c => { if (!groups[c.value]) groups[c.value] = []; groups[c.value].push(c); });
         p.total = 0; p.score.forEach(c => c.isDead = false);
-        Object.keys(groups).forEach(val => { let cards = groups[val]; let numDead = Math.floor(cards.length / 3) * 3; for (let i = 0; i < numDead; i++) cards[i].isDead = true; });
+        Object.keys(groups).forEach(val => { 
+            // 1以外は3枚で消滅、1は絶対に消滅しない
+            if (val !== "1") {
+                let cards = groups[val]; let numDead = Math.floor(cards.length / 3) * 3; for (let i = 0; i < numDead; i++) cards[i].isDead = true; 
+            }
+        });
         p.score.forEach(c => { if (!c.isDead) p.total += c.value; });
     });
     let maxTotal = Math.max(...players.map(p => p.total));
