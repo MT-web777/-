@@ -133,8 +133,6 @@ button { padding: 10px 20px; cursor: pointer; border-radius: 8px; border: none; 
 
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-// 出札音
 function playSwooshSound() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const duration = 0.15;
@@ -154,8 +152,6 @@ function playSwooshSound() {
     noise.connect(filter); filter.connect(gainNode); gainNode.connect(audioCtx.destination);
     noise.start(); noise.stop(audioCtx.currentTime + duration);
 }
-
-// パス音（空振り音）
 function playPassSound() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
@@ -173,19 +169,30 @@ const personalities = [ { name: "強欲" }, { name: "慎重" }, { name: "刺客"
 let players=[], deck=[], playerCount=4, startIndex=0, turnIndex=0, lap=1, centerCard=null, phase="title", pickIndex=0;
 let lastPlayOrder = []; 
 
+// 【カウンティング用】世界に残っている各数字の「未知」の枚数を算出
+function getUnknownCardCounts() {
+    const counts = { "-3": 0, "-2": 0, "1": 0, "3": 0, "4": 0 };
+    const maxPerValue = (playerCount === 3) ? 10 : 12;
+    Object.keys(counts).forEach(v => counts[v] = maxPerValue);
+    
+    // 既知（場に出ている、獲得済み）のカードを引く
+    players.forEach(p => {
+        p.field.forEach(c => counts[c.value]--);
+        p.score.forEach(c => counts[c.value]--);
+    });
+    // 中央カードも既知
+    if (centerCard) counts[centerCard.value]--;
+    
+    return counts;
+}
+
 function showPassMessage(playerId) {
-    playPassSound(); // パス時に音を鳴らす
+    playPassSound();
     const pEl = document.querySelector(`.player-id-${playerId}`);
     if(!pEl) return;
     const msg = document.createElement("div");
     msg.innerText = "PASS";
-    msg.style.cssText = `
-        position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
-        background: rgba(255,255,255,0.9); color: #333; padding: 5px 15px;
-        border-radius: 20px; font-weight: bold; font-size: 14px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 1000;
-        animation: fadeUp 1s forwards; border: 1px solid #666;
-    `;
+    msg.style.cssText = `position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); color: #333; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 1000; animation: fadeUp 1s forwards; border: 1px solid #666;`;
     pEl.appendChild(msg);
     setTimeout(() => msg.remove(), 1000);
 }
@@ -219,10 +226,16 @@ function aiThink(p) {
     const others = players.filter(o => o.id !== p.id);
     const maxOther = Math.max(...others.map(o => o.field.reduce((a,v)=>a+v.value, 0)));
     const centerIsOne = (centerCard && centerCard.value === 1);
-    const myMinusCount = (centerCard && centerCard.value < 0) ? p.score.filter(s => s.value === centerCard.value).length : 0;
+    
+    // 【カウンティング】中央獲得によって相殺が発生するか、その可能性が残っているかを判断
+    const unknownCounts = getUnknownCardCounts();
+    const myOwned = p.score.filter(s => s.value === centerCard.value).length;
+    const canEverFinishSet = (myOwned + unknownCounts[centerCard.value] >= 3);
+    
     const isSpecialTrait = (trait === "慎重" || trait === "大器" || trait === "刺客");
 
-    if (!( (centerIsOne || myMinusCount > 0) && isSpecialTrait )) {
+    // 基本戦略：1獲得やマイナス相殺が「確定的に狙える」なら勝負する
+    if (!( (centerIsOne || (centerCard.value < 0 && canEverFinishSet)) && isSpecialTrait )) {
         if (lap > 1 && mySum > maxOther && mySum > 0) return {action: "pass"};
         if (lap > 2 && mySum === maxOther && mySum > 0) return {action: "pass"};
     }
@@ -230,7 +243,7 @@ function aiThink(p) {
     const choices = p.hand.map((c, idx) => {
         let score = 0; const proj = mySum + c.value;
         if (centerIsOne && proj > maxOther) score += 100000;
-        else if (myMinusCount > 0 && proj > maxOther) score += (myMinusCount === 2) ? 80000 : 40000;
+        else if (centerCard.value < 0 && myOwned === 2 && proj > maxOther) score += 80000; // マイナス相殺
         return {idx, score: score + Math.random() * 50};
     }).sort((a,b)=>b.score - a.score);
     return {action: "play", index: choices[0].idx};
@@ -252,18 +265,34 @@ function nextPick() {
     updateUIPanels("獲得パート", `回収中 (P${p.id})`, (p.id === 0) ? "場から1枚取ってください。" : `P${p.id}が獲得中...`);
     if (p.id === 0) { render(true, targets.map(t => t.id)); return; }
 
-    // AIの思考ロジック（マイナス相殺を最優先）
+    const unknownCounts = getUnknownCardCounts();
     let bestT = targets[0], bestCi = 0, bestScore = -999999;
+    
     targets.forEach(t => {
         t.field.forEach((c, ci) => {
-            let s = 0;
+            let s = 0; 
             const myOwned = p.score.filter(sc => sc.value === c.value).length;
-            if (myOwned === 2 && c.value < 0) { s += 1000000; } // マイナス相殺を最優先
-            else if (c.value === 1) { s += 50000; } 
-            else if (myOwned === 2 && c.value > 1) { s -= 50000; } 
-            else if (myOwned === 1 && c.value < 0) { s += 20000; }
-            else { s += c.value * 1000; }
+            const canStillSet = (myOwned + 1 + unknownCounts[c.value] >= 3);
 
+            // 【カウンティング思考】
+            if (c.value === 1) {
+                s += 50000; // 1は絶対得点なので高い
+            } else if (c.value < 0) {
+                if (myOwned === 2) s += 1000000; // 相殺確定なら最優先
+                else if (canStillSet) s += 20000; // まだ相殺の可能性があるマイナス
+                else s -= 10000; // 相殺不可のマイナスは避ける
+            } else {
+                // プラスカード
+                if (myOwned === 2) {
+                    // 今獲ると消滅（0点）する場合
+                    s -= 50000;
+                } else if (myOwned === 1 && !canStillSet) {
+                    // 今獲っても、もう3枚揃う可能性がないプラスカードは価値が高い
+                    s += (c.value * 2000);
+                } else {
+                    s += (c.value * 1000);
+                }
+            }
             if (s > bestScore) { bestScore = s; bestT = t; bestCi = ci; }
         });
     });
@@ -290,7 +319,6 @@ function endGame(){
         let groups = {}; p.score.forEach(c => { if (!groups[c.value]) groups[c.value] = []; groups[c.value].push(c); });
         p.total = 0; p.score.forEach(c => c.isDead = false);
         Object.keys(groups).forEach(val => { 
-            // 1以外は3枚で消滅、1は絶対に消滅しない
             if (val !== "1") {
                 let cards = groups[val]; let numDead = Math.floor(cards.length / 3) * 3; for (let i = 0; i < numDead; i++) cards[i].isDead = true; 
             }
@@ -308,9 +336,31 @@ function updateInfo() { document.getElementById("infoLabel").innerText = `山札
 function makeDeck(){let d=[];[-3,-2,1,3,4].forEach(v=>{for(let i=0;i<12;i++)d.push({value:v});});return d.sort(()=>Math.random()-0.5);}
 
 function startGame(){
-    deck=makeDeck(); if(playerCount===3) { let newDeck = []; [-3,-2,1,3,4].forEach(v => { let count=0; deck.forEach(c => { if(c.value === v && count < 10) { newDeck.push(c); count++; } }); }); deck = newDeck.sort(()=>Math.random()-0.5); }
-    players=[]; let shuffledTraits = [...personalities].sort(() => Math.random() - 0.5);
-    for(let i=0;i<playerCount;i++) { let trait = (i === 0) ? null : shuffledTraits[(i - 1) % shuffledTraits.length]; players.push({ id:i, hand:[], field:[], score:[], total:0, trait: trait }); }
+    deck=makeDeck(); 
+    if(playerCount===3) { 
+        // 指定された「1を2枚、3を2枚、4を2枚、-2を2枚、-3を2枚」を抜く処理
+        let removeCounts = { "1": 2, "3": 2, "4": 2, "-2": 2, "-3": 2 };
+        let newDeck = [];
+        
+        // デッキの後ろから順にチェックして、指定枚数分だけ除外する
+        for (let i = deck.length - 1; i >= 0; i--) {
+            let val = deck[i].value;
+            if (removeCounts[val] && removeCounts[val] > 0) {
+                removeCounts[val]--;
+                // このカードは追加しない（抜く）
+            } else {
+                newDeck.push(deck[i]);
+            }
+        }
+        deck = newDeck.sort(() => Math.random() - 0.5);
+    }
+    
+    players=[]; 
+    let shuffledTraits = [...personalities].sort(() => Math.random() - 0.5);
+    for(let i=0;i<playerCount;i++) { 
+        let trait = (i === 0) ? null : shuffledTraits[(i - 1) % shuffledTraits.length]; 
+        players.push({ id:i, hand:[], field:[], score:[], total:0, trait: trait }); 
+    }
     for(let i=0;i<3;i++) players.forEach(p=>p.hand.push(deck.pop()));
     nextRound();
 }
@@ -325,39 +375,13 @@ function nextTurn(){
 
 function aiPlay(p){ 
     const d=aiThink(p); 
-    if(d.action==="pass") { 
-        showPassMessage(p.id); 
-        advanceTurn(); 
-    } else { 
-        const c=p.hand.splice(d.index,1)[0]; 
-        p.field.push(c); 
-        lastPlayOrder.push(p.id); 
-        if(deck.length) { p.hand.push(deck.pop()); updateInfo(); } 
-        playSwooshSound(); 
-        advanceTurn(); 
-    } 
+    if(d.action==="pass") { showPassMessage(p.id); advanceTurn(); } 
+    else { const c=p.hand.splice(d.index,1)[0]; p.field.push(c); lastPlayOrder.push(p.id); if(deck.length) { p.hand.push(deck.pop()); updateInfo(); } playSwooshSound(); advanceTurn(); } 
 }
 
-function humanPlay(i){ 
-    if(phase!=="play"||getPlayerIdx(turnIndex)!==0)return; 
-    const p=players[0]; const c=p.hand.splice(i,1)[0]; 
-    p.field.push(c); lastPlayOrder.push(0); 
-    if(deck.length){p.hand.push(deck.pop()); updateInfo();} 
-    playSwooshSound(); advanceTurn(); 
-}
-
-function pass(){ 
-    if(lap===1||phase!=="play"||getPlayerIdx(turnIndex)!==0)return; 
-    showPassMessage(0); 
-    advanceTurn(); 
-}
-
-function nextRound(){
-    phase="play"; lap=1; turnIndex=0; lastPlayOrder=[]; players.forEach(p=>p.field=[]);
-    if(deck.length > 0) { centerCard=deck.pop(); updateInfo(); } else return endGame();
-    applyCardDesign(document.getElementById("centerCard"), centerCard.value);
-    document.getElementById("centerCard").style.visibility="visible"; render(); nextTurn();
-}
+function humanPlay(i){ if(phase!=="play"||getPlayerIdx(turnIndex)!==0)return; const p=players[0]; const c=p.hand.splice(i,1)[0]; p.field.push(c); lastPlayOrder.push(0); if(deck.length){p.hand.push(deck.pop()); updateInfo();} playSwooshSound(); advanceTurn(); }
+function pass(){ if(lap===1||phase!=="play"||getPlayerIdx(turnIndex)!==0)return; showPassMessage(0); advanceTurn(); }
+function nextRound(){ phase="play"; lap=1; turnIndex=0; lastPlayOrder=[]; players.forEach(p=>p.field=[]); if(deck.length > 0) { centerCard=deck.pop(); updateInfo(); } else return endGame(); applyCardDesign(document.getElementById("centerCard"), centerCard.value); document.getElementById("centerCard").style.visibility="visible"; render(); nextTurn(); }
 
 function applyCardDesign(el, val, isBack=false) {
     if(!el) return; el.style.backgroundImage = ""; el.innerText = "";
@@ -384,7 +408,6 @@ function render(pick=false,allowedIds=[]){
     const isEnd = (phase === "end");
     const posConfig = { 3:[{x:600,y:450},{x:20,y:450},{x:20,y:20}], 4:[{x:600,y:450},{x:20,y:450},{x:20,y:20},{x:600,y:20}], 5:[{x:600,y:450},{x:20,y:450},{x:20,y:20},{x:400,y:5},{x:750,y:100}] };
     const positions=posConfig[players.length];
-
     players.forEach((p,i)=>{
         const d=document.createElement("div"); d.className="player player-id-"+p.id+(p.id===0?" human":"") + (isEnd ? " reveal-all" : "");
         d.style.left=positions[i].x+"px"; d.style.top=positions[i].y+"px";
@@ -407,11 +430,7 @@ function render(pick=false,allowedIds=[]){
             const lbl=document.createElement("div"); lbl.style.cssText="font-weight:bold;margin-top:10px;font-size:22px;color:#f1c40f;text-shadow:2px 2px 4px black;";
             lbl.innerText=(p.isAbsoluteWinner?"★WINNER★ ":"") + `Score: ${p.total}`;
             resDiv.appendChild(lbl);
-            if(p.id === 0) {
-                const crd = document.createElement("div"); crd.style.fontSize="10px"; crd.style.marginTop="5px"; crd.innerText="Game Design & Illustration: M";
-                const rb = document.createElement("button"); rb.style.marginTop="10px"; rb.innerText="REPLAY"; rb.onclick=()=>startGame();
-                resDiv.appendChild(crd); resDiv.appendChild(rb);
-            }
+            if(p.id === 0) { const crd = document.createElement("div"); crd.style.fontSize="10px"; crd.style.marginTop="5px"; crd.innerText="Game Design & Illustration: M"; const rb = document.createElement("button"); rb.style.marginTop="10px"; rb.innerText="REPLAY"; rb.onclick=()=>startGame(); resDiv.appendChild(crd); resDiv.appendChild(rb); }
             d.appendChild(resDiv);
         }
         t.appendChild(d);
