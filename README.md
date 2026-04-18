@@ -1,4 +1,4 @@
-# POTRABASH (Original Art Edition)
+# ポトラバッシュ：POTRABASH (Original Art Edition)
 
 ゲームマーケット2026出展予定のオリジナルボードゲームです。
 
